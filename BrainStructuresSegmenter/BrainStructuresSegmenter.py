@@ -21,11 +21,9 @@ class BrainStructuresSegmenter(ScriptedLoadableModule):
     self.parent.dependencies = []
     self.parent.contributors = ["Antonio Carlos da S. Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This module aims to segment brain tissues from strucutral MRI images, namely T1, T2 and PD weigethed MRI images. Here, it is applyied
-    simple image processing pipeline based on voxel intensity segmentation in order to offer a fast tissue segmentation.
-    Specifically, this module only offers the White Matter, Gray Matter and CSF tissue label segmentation, in which new modules will be developed
-    to more complex segmentations such as deep gray matter structures and out skull surface. More details about this module, see the wikipage:
-    https://www.slicer.org/wiki/Documentation/Nightly/Extensions/BrainTissuesExtension
+    This module aims to segment brain tissues from strucutral MRI images, namely T1, T2 and PD weigethed MRI images. Here, it is applied
+    an image processing pipeline based on voxel intensity segmentation in order to offer a fast tissue segmentation. This module is the main caller from a set
+    of different brain segmentation procedures. More details about this module, see the wikipage: https://www.slicer.org/wiki/Documentation/Nightly/Modules/BrainStructuresSegmenter
     """
     self.parent.acknowledgementText = """
     This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES.
@@ -162,7 +160,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     self.setFilteringNumberOfIterationWidget = ctk.ctkSliderWidget()
     self.setFilteringNumberOfIterationWidget.maximum = 50
-    self.setFilteringNumberOfIterationWidget.minimum = 0
+    self.setFilteringNumberOfIterationWidget.minimum = 1
     self.setFilteringNumberOfIterationWidget.value = 5
     self.setFilteringNumberOfIterationWidget.singleStep = 1
     self.setFilteringNumberOfIterationWidget.setToolTip("Number of iterations parameter.")
@@ -172,9 +170,9 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     # Filtering Parameters: Q value
     #
     self.setFilteringQWidget = ctk.ctkSliderWidget()
-    self.setFilteringQWidget.singleStep = 0.1
-    self.setFilteringQWidget.minimum = 0.0
-    self.setFilteringQWidget.maximum = 2.0
+    self.setFilteringQWidget.singleStep = 0.01
+    self.setFilteringQWidget.minimum = 0.01
+    self.setFilteringQWidget.maximum = 1.99
     self.setFilteringQWidget.value = 1.2
     self.setFilteringQWidget.setToolTip("Q value parameter.")
     parametersNoiseAttenuationFormLayout.addRow("Q Value ", self.setFilteringQWidget)
@@ -198,7 +196,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setGaussianLabelQWidget.setMinimum(0.1)
     self.setGaussianLabelQWidget.setSingleStep(0.1)
     self.setGaussianLabelQWidget.setValue(0.2)
-    self.setGaussianLabelQWidget.setToolTip("Percentage of voxel used in registration.")
+    self.setGaussianLabelQWidget.setToolTip("Label smoothing by a gaussian distribution with variance sigma. The units here is given in mm.")
     parametersLabelRefinementLayout.addRow("Gaussian Sigma ", self.setGaussianLabelQWidget)
 
     #
@@ -292,19 +290,19 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     logging.info('Processing started')
 
     if not applyBET:
-      slicer.util.showStatusMessage("Pre-processing: Extraction brain from T1 and FLAIR images...")
+      slicer.util.showStatusMessage("Pre-processing: Brain extraction...")
 
       betParams = {}
       betParams["inputVolume"] = inputVolume.GetID()
       betParams["outputVolume"] = inputVolume.GetID()
 
-      slicer.cli.run(slicer.modules.brainextractiontool, None, betParams, wait_for_completion=True)
+      slicer.cli.run(slicer.modules.robexbrainextraction, None, betParams, wait_for_completion=True)
 
 
     #################################################################################################################
     #                                              Noise Attenuation                                                #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 1/...: Decreasing image noise level...")
+    slicer.util.showStatusMessage("Step 1/4: Decreasing image noise level...")
 
     inputSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputSmoothVolume)
@@ -321,7 +319,7 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                             Bias Field Correction                                             #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 2/...: Bias field correction...")
+    slicer.util.showStatusMessage("Step 2/4: Bias field correction...")
 
     inputSmoothBiasVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputSmoothBiasVolume)
@@ -334,7 +332,7 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                             Brain Tissue Segmentation                                         #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 3/...: Brain tissue segmentation...")
+    slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
 
     regParams = {}
     regParams["inputVolume"] = inputSmoothBiasVolume.GetID()
@@ -348,14 +346,29 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                                 Label Smoothing                                               #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 4/...: Tissue mask refinement...")
+    if isSeparateTissue:
+      slicer.util.showStatusMessage("Step 4/4: Tissue mask refinement...")
+      regParams = {}
+      if imageModality == "T1":
+        if tissueType == "White Matter":
+          regParams["labelToSmooth"] = 3
+        elif tissueType == "Gray Matter":
+          regParams["labelToSmooth"] = 2
+        elif tissueType == "CSF":
+          regParams["labelToSmooth"] = 1
+      else:
+        if tissueType == "White Matter":
+          regParams["labelToSmooth"] = 1
+        elif tissueType == "Gray Matter":
+          regParams["labelToSmooth"] = 2
+        elif tissueType == "CSF":
+          regParams["labelToSmooth"] = 3
 
-    regParams = {}
-    regParams["gaussianSigma"] = sigma
-    regParams["inputVolume"] = outputVolume.GetID()
-    regParams["outputVolume"] = outputVolume.GetID()
+      regParams["gaussianSigma"] = sigma
+      regParams["inputVolume"] = outputVolume.GetID()
+      regParams["outputVolume"] = outputVolume.GetID()
 
-    slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
+      slicer.cli.run(slicer.modules.labelmapsmoothing, None, regParams, wait_for_completion=True)
 
     logging.info('Processing completed')
 

@@ -6,6 +6,8 @@
 #include "itkStatisticsImageFilter.h"
 #include "itkDivideImageFilter.h"
 #include "itkScalarImageKmeansImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkRelabelComponentImageFilter.h"
 
 #include "BasicBrainTissuesCLP.h"
 
@@ -112,6 +114,19 @@ int DoIt( int argc, char * argv[], T )
                 std::cout << "cluster[" << i << "] ";
                 std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
             }
+
+//            TODO Before save the label, remove small disconnected regions...take the largest area
+//            //Removing non connected regions
+//            typedef itk::ConnectedComponentImageFilter<OutputImageType, OutputImageType> ConnectedLabelType;
+//            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+//            connLabel->SetInput(kmeansFilter->GetOutput());
+//            connLabel->Update();
+
+//            typedef itk::RelabelComponentImageFilter<OutputImageType, OutputImageType>      RelabelerType;
+//            typename RelabelerType::Pointer relabel = RelabelerType::New();
+//            relabel->SetInput(connLabel->GetOutput());
+//            relabel->SetSortByObjectSize(true);
+//            relabel->Update();
 
             typedef KMeansFilterType::OutputImageType  OutputImageType;
             typedef itk::ImageFileWriter< OutputImageType > WriterType;

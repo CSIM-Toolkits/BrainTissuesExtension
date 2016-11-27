@@ -2,7 +2,7 @@
 <executable>
   <category>Segmentation</category>
   <title>Basic Brain Tissues</title>
-  <description><![CDATA[This CLI module aims to extract brain tissues mask. This tool was intensively tested with T1 MRI images, but the pipeline could be applied to any other structural MRI image. The goal here is to provide a brain tissue segmentation tool in order to provide a brain mask for other segmentation procedures.]]></description>
+  <description><![CDATA[This module aims to extract brain tissues mask. This tool was intensively tested with T1 MRI images, but the pipeline could be applied to any other structural MRI image. Here, it is applied a simple image processing pipeline based on voxel intensity segmentation in order to offer a fast tissue segmentation. In fact, this module alone only do the tissue segmentation process, which may offer a suboptimal response. It is suggest the use of the BrainStructuresSegmenter module instead.]]></description>
   <version>0.0.1</version>
   <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/BasicBrainTissues</documentation-url>
   <license>Slicer</license>
@@ -37,7 +37,7 @@
     </image>
   </parameters>
 <parameters>
-<label>Type of Tissue Output</label>
+<label>Tissue Type Output</label>
   <description><![CDATA[Parameters to be applied on the previous white matter segmentation procedure.]]></description>
 	<boolean>
 	      <name>oneTissue</name>
