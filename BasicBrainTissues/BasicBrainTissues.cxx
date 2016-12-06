@@ -3,11 +3,13 @@
 
 #include "itkPluginUtilities.h"
 #include "itkThresholdImageFilter.h"
-#include "itkStatisticsImageFilter.h"
 #include "itkDivideImageFilter.h"
-#include "itkScalarImageKmeansImageFilter.h"
+#include "itkBayesianClassifierImageFilter.h"
+#include "itkBayesianClassifierInitializationImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkMaskImageFilter.h"
 
 #include "BasicBrainTissuesCLP.h"
 
@@ -38,34 +40,26 @@ int DoIt( int argc, char * argv[], T )
     reader->SetFileName( inputVolume.c_str() );
     reader->Update();
 
-    typedef itk::StatisticsImageFilter<InputImageType> StatisticType;
-    typename StatisticType::Pointer stat = StatisticType::New();
-    stat->SetInput(reader->GetOutput());
-    stat->Update();
-    double meanValues[numClass];
+    //Bayesian Segmentation Approach
+    typedef itk::BayesianClassifierInitializationImageFilter< InputImageType >         BayesianInitializerType;
+    typename BayesianInitializerType::Pointer bayesianInitializer = BayesianInitializerType::New();
 
-    double guessByContrast = (stat->GetMaximum() - stat->GetMinimum())/numClass;
-    for (int n = 0; n < numClass; ++n) {
-        meanValues[n]=guessByContrast*(n+1);
-    }
+    bayesianInitializer->SetInput( reader->GetOutput() );
+    bayesianInitializer->SetNumberOfClasses( numClass );// Background, WM, GM and CSF
+    bayesianInitializer->Update();
 
-    //Apply segmentation procedure
-    //K-Means Segmentation Approach
-    typedef itk::ScalarImageKmeansImageFilter< InputImageType > KMeansFilterType;
-    KMeansFilterType::Pointer kmeansFilter = KMeansFilterType::New();
-    kmeansFilter->SetInput( reader->GetOutput() );
-    const unsigned int numberOfInitialClasses = numClass;
+    typedef float          PriorType;
+    typedef float          PosteriorType;
 
-    for( unsigned k=0; k < numberOfInitialClasses; k++ )
-    {
-        kmeansFilter->AddClassWithInitialMean(meanValues[k]);
-    }
+    typedef itk::VectorImage< InputPixelType, Dimension > VectorInputImageType;
+    typedef itk::BayesianClassifierImageFilter< VectorInputImageType,OutputPixelType, PosteriorType,PriorType >   ClassifierFilterType;
+    typename ClassifierFilterType::Pointer bayesClassifier = ClassifierFilterType::New();
 
-    kmeansFilter->Update();
+    bayesClassifier->SetInput( bayesianInitializer->GetOutput() );
 
     if (imageModality=="T1") {
         if (oneTissue) {
-            KMeansFilterType::OutputImagePixelType tissueValue;
+            unsigned char tissueValue;
             if (typeTissue == "White Matter") {
                 tissueValue = 3;
             }else if (typeTissue == "Gray Matter") {
@@ -77,7 +71,7 @@ int DoIt( int argc, char * argv[], T )
             //Take only the tissue of interest
             typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
             typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
-            thresholdFilter->SetInput(kmeansFilter->GetOutput());
+            thresholdFilter->SetInput(bayesClassifier->GetOutput());
             thresholdFilter->ThresholdOutside(tissueValue, tissueValue);
             thresholdFilter->SetOutsideValue(0);
 
@@ -88,50 +82,65 @@ int DoIt( int argc, char * argv[], T )
             divide->SetConstant2(tissueValue);
             divide->Update();
 
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing nonconnected voxels
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(divide->GetOutput());
+            connLabel->Update();
+
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
+
+            typedef itk::BinaryThresholdImageFilter<OutputImageType,OutputImageType>                BinaryLabelMap;
+            typename BinaryLabelMap::Pointer binaryMap = BinaryLabelMap::New();
+            binaryMap->SetInput(relabel->GetOutput());
+            binaryMap->SetLowerThreshold(1);
+            binaryMap->SetUpperThreshold(2);
+            binaryMap->SetInsideValue(1);
 
             typedef itk::ImageFileWriter<OutputImageType> WriterType;
             typename WriterType::Pointer writer = WriterType::New();
             writer->SetFileName( outputLabel.c_str() );
-            writer->SetInput( divide->GetOutput() );
+            writer->SetInput( binaryMap->GetOutput() );
             writer->SetUseCompression(1);
             writer->Update();
             return EXIT_SUCCESS;
         }else{
             //        Take all the segmented tissues
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing non connected regions
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(bayesClassifier->GetOutput());
+            connLabel->Update();
 
-//            TODO Before save the label, remove small disconnected regions...take the largest area
-//            //Removing non connected regions
-//            typedef itk::ConnectedComponentImageFilter<OutputImageType, OutputImageType> ConnectedLabelType;
-//            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
-//            connLabel->SetInput(kmeansFilter->GetOutput());
-//            connLabel->Update();
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
 
-//            typedef itk::RelabelComponentImageFilter<OutputImageType, OutputImageType>      RelabelerType;
-//            typename RelabelerType::Pointer relabel = RelabelerType::New();
-//            relabel->SetInput(connLabel->GetOutput());
-//            relabel->SetSortByObjectSize(true);
-//            relabel->Update();
+            typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
+            typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
+            thresholdFilter->SetInput(relabel->GetOutput());
+            thresholdFilter->ThresholdOutside(1, 3);
+            thresholdFilter->SetOutsideValue(0);
 
-            typedef KMeansFilterType::OutputImageType  OutputImageType;
+            typedef itk::MaskImageFilter<OutputImageType, OutputImageType>      MaskTissueType;
+            typename MaskTissueType::Pointer maskTissues = MaskTissueType::New();
+            maskTissues->SetInput(bayesClassifier->GetOutput());
+            maskTissues->SetMaskImage(thresholdFilter->GetOutput());
+            maskTissues->SetOutsideValue(0);
+
             typedef itk::ImageFileWriter< OutputImageType > WriterType;
             WriterType::Pointer writer = WriterType::New();
-            writer->SetInput( kmeansFilter->GetOutput() );
+            writer->SetInput( maskTissues->GetOutput() );
             writer->SetUseCompression(1);
             writer->SetFileName( outputLabel.c_str() );
             writer->Update();
@@ -139,7 +148,7 @@ int DoIt( int argc, char * argv[], T )
         }
     }else if (imageModality=="T2") {
         if (oneTissue) {
-            KMeansFilterType::OutputImagePixelType tissueValue;
+            unsigned char tissueValue;
             if (typeTissue == "White Matter") {
                 tissueValue = 1;
             }else if (typeTissue == "Gray Matter") {
@@ -151,7 +160,7 @@ int DoIt( int argc, char * argv[], T )
             //Take only the tissue of interest
             typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
             typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
-            thresholdFilter->SetInput(kmeansFilter->GetOutput());
+            thresholdFilter->SetInput(bayesClassifier->GetOutput());
             thresholdFilter->ThresholdOutside(tissueValue, tissueValue);
             thresholdFilter->SetOutsideValue(0);
 
@@ -162,37 +171,65 @@ int DoIt( int argc, char * argv[], T )
             divide->SetConstant2(tissueValue);
             divide->Update();
 
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing nonconnected voxels
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(divide->GetOutput());
+            connLabel->Update();
+
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
+
+            typedef itk::BinaryThresholdImageFilter<OutputImageType,OutputImageType>                BinaryLabelMap;
+            typename BinaryLabelMap::Pointer binaryMap = BinaryLabelMap::New();
+            binaryMap->SetInput(relabel->GetOutput());
+            binaryMap->SetLowerThreshold(1);
+            binaryMap->SetUpperThreshold(2);
+            binaryMap->SetInsideValue(1);
 
             typedef itk::ImageFileWriter<OutputImageType> WriterType;
             typename WriterType::Pointer writer = WriterType::New();
             writer->SetFileName( outputLabel.c_str() );
-            writer->SetInput( divide->GetOutput() );
+            writer->SetInput( binaryMap->GetOutput() );
             writer->SetUseCompression(1);
             writer->Update();
             return EXIT_SUCCESS;
         }else{
             //        Take all the segmented tissues
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing non connected regions
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(bayesClassifier->GetOutput());
+            connLabel->Update();
 
-            typedef KMeansFilterType::OutputImageType  OutputImageType;
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
+
+            typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
+            typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
+            thresholdFilter->SetInput(relabel->GetOutput());
+            thresholdFilter->ThresholdOutside(1, 3);
+            thresholdFilter->SetOutsideValue(0);
+
+            typedef itk::MaskImageFilter<OutputImageType, OutputImageType>      MaskTissueType;
+            typename MaskTissueType::Pointer maskTissues = MaskTissueType::New();
+            maskTissues->SetInput(bayesClassifier->GetOutput());
+            maskTissues->SetMaskImage(thresholdFilter->GetOutput());
+            maskTissues->SetOutsideValue(0);
+
             typedef itk::ImageFileWriter< OutputImageType > WriterType;
             WriterType::Pointer writer = WriterType::New();
-            writer->SetInput( kmeansFilter->GetOutput() );
+            writer->SetInput( maskTissues->GetOutput() );
             writer->SetUseCompression(1);
             writer->SetFileName( outputLabel.c_str() );
             writer->Update();
@@ -200,7 +237,7 @@ int DoIt( int argc, char * argv[], T )
         }
     }else if (imageModality=="PD") {
         if (oneTissue) {
-            KMeansFilterType::OutputImagePixelType tissueValue;
+            unsigned char tissueValue;
             if (typeTissue == "White Matter") {
                 tissueValue = 1;
             }else if (typeTissue == "Gray Matter") {
@@ -212,7 +249,7 @@ int DoIt( int argc, char * argv[], T )
             //Take only the tissue of interest
             typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
             typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
-            thresholdFilter->SetInput(kmeansFilter->GetOutput());
+            thresholdFilter->SetInput(bayesClassifier->GetOutput());
             thresholdFilter->ThresholdOutside(tissueValue, tissueValue);
             thresholdFilter->SetOutsideValue(0);
 
@@ -223,37 +260,65 @@ int DoIt( int argc, char * argv[], T )
             divide->SetConstant2(tissueValue);
             divide->Update();
 
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing nonconnected voxels
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(divide->GetOutput());
+            connLabel->Update();
+
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
+
+            typedef itk::BinaryThresholdImageFilter<OutputImageType,OutputImageType>                BinaryLabelMap;
+            typename BinaryLabelMap::Pointer binaryMap = BinaryLabelMap::New();
+            binaryMap->SetInput(relabel->GetOutput());
+            binaryMap->SetLowerThreshold(1);
+            binaryMap->SetUpperThreshold(2);
+            binaryMap->SetInsideValue(1);
 
             typedef itk::ImageFileWriter<OutputImageType> WriterType;
             typename WriterType::Pointer writer = WriterType::New();
             writer->SetFileName( outputLabel.c_str() );
-            writer->SetInput( divide->GetOutput() );
+            writer->SetInput( binaryMap->GetOutput() );
             writer->SetUseCompression(1);
             writer->Update();
             return EXIT_SUCCESS;
         }else{
             //        Take all the segmented tissues
-            KMeansFilterType::ParametersType estimatedMeans =
-                    kmeansFilter->GetFinalMeans();
-            const unsigned int numberOfClasses = estimatedMeans.Size();
-            for ( unsigned int i = 0; i < numberOfClasses; ++i )
-            {
-                std::cout << "cluster[" << i << "] ";
-                std::cout << "    estimated mean : " << estimatedMeans[i] << std::endl;
-            }
+            //Removing non connected regions
+            typedef unsigned int ConnectedVoxelType;
+            typedef itk::Image<ConnectedVoxelType, Dimension>   ConnectedVoxelImageType;
+            typedef itk::ConnectedComponentImageFilter<OutputImageType, ConnectedVoxelImageType> ConnectedLabelType;
+            typename ConnectedLabelType::Pointer connLabel = ConnectedLabelType::New();
+            connLabel->SetInput(bayesClassifier->GetOutput());
+            connLabel->Update();
 
-            typedef KMeansFilterType::OutputImageType  OutputImageType;
+            typedef itk::RelabelComponentImageFilter<ConnectedVoxelImageType, OutputImageType>      RelabelerType;
+            typename RelabelerType::Pointer relabel = RelabelerType::New();
+            relabel->SetInput(connLabel->GetOutput());
+            relabel->SetSortByObjectSize(true);
+            relabel->Update();
+
+            typedef itk::ThresholdImageFilter <OutputImageType>     ThresholdImageFilterType;
+            typename  ThresholdImageFilterType::Pointer thresholdFilter  = ThresholdImageFilterType::New();
+            thresholdFilter->SetInput(relabel->GetOutput());
+            thresholdFilter->ThresholdOutside(1, 3);
+            thresholdFilter->SetOutsideValue(0);
+
+            typedef itk::MaskImageFilter<OutputImageType, OutputImageType>      MaskTissueType;
+            typename MaskTissueType::Pointer maskTissues = MaskTissueType::New();
+            maskTissues->SetInput(bayesClassifier->GetOutput());
+            maskTissues->SetMaskImage(thresholdFilter->GetOutput());
+            maskTissues->SetOutsideValue(0);
+
             typedef itk::ImageFileWriter< OutputImageType > WriterType;
             WriterType::Pointer writer = WriterType::New();
-            writer->SetInput( kmeansFilter->GetOutput() );
+            writer->SetInput( maskTissues->GetOutput() );
             writer->SetUseCompression(1);
             writer->SetFileName( outputLabel.c_str() );
             writer->Update();

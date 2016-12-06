@@ -39,7 +39,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    ScriptedLoadableModuleWidget.setup(self)
+    # ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -302,7 +302,10 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                              Noise Attenuation                                                #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 1/4: Decreasing image noise level...")
+    if isSeparateTissue:
+      slicer.util.showStatusMessage("Step 1/4: Decreasing image noise level...")
+    else:
+      slicer.util.showStatusMessage("Step 1/3: Decreasing image noise level...")
 
     inputSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputSmoothVolume)
@@ -319,7 +322,10 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                             Bias Field Correction                                             #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 2/4: Bias field correction...")
+    if isSeparateTissue:
+      slicer.util.showStatusMessage("Step 2/4: Bias field correction...")
+    else:
+      slicer.util.showStatusMessage("Step 2/3: Bias field correction...")
 
     inputSmoothBiasVolume = slicer.vtkMRMLScalarVolumeNode()
     slicer.mrmlScene.AddNode(inputSmoothBiasVolume)
@@ -332,7 +338,11 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
     #################################################################################################################
     #                                             Brain Tissue Segmentation                                         #
     #################################################################################################################
-    slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
+    if isSeparateTissue:
+      slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
+    else:
+      slicer.util.showStatusMessage("Step 3/3: Brain tissue segmentation...")
+
 
     regParams = {}
     regParams["inputVolume"] = inputSmoothBiasVolume.GetID()
@@ -370,6 +380,14 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
 
       slicer.cli.run(slicer.modules.labelmapsmoothing, None, regParams, wait_for_completion=True)
 
+
+    #
+    # Removing unnecessary nodes
+    #
+    slicer.mrmlScene.RemoveNode(inputSmoothVolume)
+    slicer.mrmlScene.RemoveNode(inputSmoothBiasVolume)
+
+    slicer.util.showStatusMessage("Processing completed")
     logging.info('Processing completed')
 
     return True
