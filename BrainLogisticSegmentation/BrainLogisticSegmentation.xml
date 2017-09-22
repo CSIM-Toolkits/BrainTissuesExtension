@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Examples</category>
+  <title>Brain Logistic Segmentation</title>
+  <description><![CDATA[This is a CLI module ...]]></description>
+  <version>0.0.1</version>
+  <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/BrainLogisticSegmentation</documentation-url>
+  <license>Slicer</license>
+  <contributor>Antonio Carlos Senra Filho (University of Sao Paulo)</contributor>
+  <acknowledgements>This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES</acknowledgements>
+  <parameters>
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+    <image type="scalar">
+      <name>inputVolume</name>
+      <label>Input Volume</label>
+      <channel>input</channel>
+      <index>0</index>
+      <description><![CDATA[Input volume]]></description>
+    </image>
+    <image type="label">
+      <name>outputTissue</name>
+      <label>Output Tissue</label>
+      <channel>output</channel>
+      <index>1</index>
+      <description><![CDATA[Output Tissues]]></description>
+    </image>
+<integer>
+      <name>nTissues</name>
+      <longflag>nTissues</longflag>
+      <flag>n</flag>
+      <label>Number Of Tissues</label>
+      <description><![CDATA[]]></description>
+      <default>3</default>
+      <constraints>
+        <minimum>1</minimum>
+        <maximum>20</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+    <boolean>
+	<name>doOneTissue</name>
+	<longflag>--doOneTissue</longflag>
+	<description><![CDATA[Choose if you want to use ...]]></description>
+	<label>Extract one single tissue</label>
+	<default>false</default>
+    </boolean>
+    <integer>
+      <name>selectedTissueMask</name>
+      <longflag>selectedTissueMask</longflag>
+      <flag>s</flag>
+      <label>Selected Tissue Mask</label>
+      <description><![CDATA[]]></description>
+      <default>1</default>
+      <constraints>
+        <minimum>1</minimum>
+        <maximum>20</maximum>
+        <step>1</step>
+      </constraints>
+    </integer> 
+  </parameters>
+ <parameters advanced="true">
+    <label>Advanced Segmentation Parameters</label>
+    <description><![CDATA[Advanced segmentation parameters]]></description>
+    <float>
+      <name>tissueThr</name>
+      <longflag>thr</longflag>
+      <label>Tissue Refinement Threshold</label>
+      <description><![CDATA[]]></description>
+      <default>0.5</default>
+      <constraints>
+        <minimum>0.01</minimum>
+        <maximum>0.99</maximum>
+        <step>0.01</step>
+      </constraints>
+    </float>
+    <boolean>
+	<name>useManualTolerance</name>
+	<longflag>--useManualTolerance</longflag>
+	<description><![CDATA[Choose if you want to use ...]]></description>
+	<label>Use Manual Tolerance</label>
+	<default>false</default>
+    </boolean>
+    <integer>
+      <name>manualTolerance</name>
+      <longflag>mTolerance</longflag>
+      <flag>t</flag>
+      <label>Manual Tolerance</label>
+      <description><![CDATA[]]></description>
+      <default>1</default>
+      <constraints>
+        <minimum>1</minimum>
+        <maximum>49</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+    <boolean>
+	<name>useManualBins</name>
+	<longflag>--useManualBins</longflag>
+	<description><![CDATA[Choose if you want to use ...]]></description>
+	<label>Use Manual Number Of Bins</label>
+	<default>false</default>
+    </boolean>
+    <integer>
+      <name>manualNumberOfBins</name>
+      <longflag>mBins</longflag>
+      <flag>b</flag>
+      <label>Manual Number Of Bins</label>
+      <description><![CDATA[]]></description>
+      <default>32</default>
+      <constraints>
+        <minimum>30</minimum>
+        <maximum>256</maximum>
+        <step>1</step>
+      </constraints>
+    </integer>
+  </parameters>
+</executable>

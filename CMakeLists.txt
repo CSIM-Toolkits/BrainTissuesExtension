@@ -21,6 +21,7 @@ include(${Slicer_USE_FILE})
 # Extension modules
 add_subdirectory(BasicBrainTissues)
 add_subdirectory(BrainStructuresSegmenter)
+add_subdirectory(BrainLogisticSegmentation)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
