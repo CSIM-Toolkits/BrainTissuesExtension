@@ -3,6 +3,7 @@
 #include "itkVectorIndexSelectionCastImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkStatisticsImageFilter.h"
+#include "itkOtsuThresholdImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "itkImageRegionIterator.h"
 #include "itkBrainLogisticSegmentationImageFilter.h"
@@ -24,6 +25,13 @@ int DoIt( int argc, char * argv[], TPixel )
 {
     PARSE_ARGS;
 
+    if (doOneTissue) {
+        if (selectedTissueMask>nTissues) {
+            cout<<"Error: The selected tissue number is higher then the number of tissues in the image.\nThe selected tissue must be lower or equal then "<<nTissues<<"\nPlease revise this parameter."<<endl;
+            return EXIT_FAILURE;
+        }
+    }
+
     typedef TPixel InputPixelType;
     typedef TPixel OutputPixelType;
 
@@ -43,13 +51,6 @@ int DoIt( int argc, char * argv[], TPixel )
     brainSeg->SetInput(reader->GetOutput());
     brainSeg->DebugModeOn();
 
-    //Set the tolerance
-    if (useManualTolerance) {
-        //Use value offered from the user interface.
-        brainSeg->ManualToleranceOn();
-        brainSeg->SetManualTolerance(manualTolerance);
-    }
-
     //Set the number of bins.
     if (useManualBins) {
         //Use value offered from the user interface.
@@ -67,7 +68,7 @@ int DoIt( int argc, char * argv[], TPixel )
 
     typedef itk::VectorIndexSelectionCastImageFilter<OutputImageType, InputImageType>   IndexSelectionType;
     typedef itk::StatisticsImageFilter<InputImageType>  StatisticsType;
-    typename StatisticsType::Pointer stat = StatisticsType::New();
+    typedef itk::OtsuThresholdImageFilter<InputImageType,InputImageType>                OtsuThresholdType;
 
     typedef itk::CastImageFilter<InputImageType, LabelImageType>    CastImageType;
     typedef itk::BinaryThresholdImageFilter<InputImageType, InputImageType>             BinaryFilterType;
@@ -75,6 +76,8 @@ int DoIt( int argc, char * argv[], TPixel )
     RegionIterator outIt(outputImage, outputImage->GetRequestedRegion());
 
     typename IndexSelectionType::Pointer tissueSelector = IndexSelectionType::New();
+    typename OtsuThresholdType::Pointer ostuThr = OtsuThresholdType::New();
+    typename StatisticsType::Pointer stat = StatisticsType::New();
     typename CastImageType::Pointer cast = CastImageType::New();
     typename BinaryFilterType::Pointer labelMask = BinaryFilterType::New();
 
@@ -85,32 +88,32 @@ int DoIt( int argc, char * argv[], TPixel )
         tissueSelector->Update();
 
         cout<<"Tissue selected: "<<selectedTissueMask<<" - threshold: "<<tissueThr<<endl;
+        stat->SetInput(tissueSelector->GetOutput());
+        stat->Update();
 
-        labelMask->SetInput(tissueSelector->GetOutput());
-        labelMask->SetLowerThreshold(tissueThr);
-        labelMask->SetInsideValue(selectedTissueMask);
-        labelMask->SetOutsideValue(0);
-        labelMask->Update();
+        if (stat->GetMaximum()<0.98) {
+            cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<") - Ostu thresholding is being applied."<<endl; //TODO Problema com o valor adotado...tem que tirar outliers para calcular a media...
 
-        RegionIterator labelIt(labelMask->GetOutput(),labelMask->GetOutput()->GetRequestedRegion());
+            ostuThr->SetInput(tissueSelector->GetOutput());
+            ostuThr->SetInsideValue(0);
+            ostuThr->SetOutsideValue(selectedTissueMask);
+            ostuThr->Update();
 
-        outIt.GoToBegin();
-        labelIt.GoToBegin();
-        while (!outIt.IsAtEnd()) {
-            outIt.Set(labelIt.Get());
-            ++outIt;
-            ++labelIt;
-        }
-    }else{
-        for (int n = 0; n < nTissues; ++n) {
-            tissueSelector->SetIndex(n);
-            tissueSelector->Update();
+            RegionIterator labelIt(ostuThr->GetOutput(),ostuThr->GetOutput()->GetRequestedRegion());
 
-            cout<<"Tissue selected: "<<selectedTissueMask<<" - threshold: "<<tissueThr<<endl;
+            outIt.GoToBegin();
+            labelIt.GoToBegin();
+            while (!outIt.IsAtEnd()) {
+                outIt.Set(labelIt.Get());
+                ++outIt;
+                ++labelIt;
+            }
+        }else{
+            cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<")"<<endl;
 
             labelMask->SetInput(tissueSelector->GetOutput());
             labelMask->SetLowerThreshold(tissueThr);
-            labelMask->SetInsideValue(n+1);
+            labelMask->SetInsideValue(selectedTissueMask);
             labelMask->SetOutsideValue(0);
             labelMask->Update();
 
@@ -119,11 +122,57 @@ int DoIt( int argc, char * argv[], TPixel )
             outIt.GoToBegin();
             labelIt.GoToBegin();
             while (!outIt.IsAtEnd()) {
-                if (labelIt.Get()!=static_cast<InputPixelType>(0)) {
-                    outIt.Set(outIt.Get()+labelIt.Get());
-                }
+                outIt.Set(labelIt.Get());
                 ++outIt;
                 ++labelIt;
+            }
+        }
+    }else{
+        for (int n = 0; n < nTissues; ++n) {
+            tissueSelector->SetIndex(n);
+            tissueSelector->Update();
+
+            cout<<"Tissue selected: "<<n+1<<" - threshold: "<<tissueThr<<endl;
+            stat->SetInput(tissueSelector->GetOutput());
+            stat->Update();
+
+            if (stat->GetMaximum()<0.98) {
+                cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<") - Ostu thresholding is being applied."<<endl;
+
+                ostuThr->SetInput(tissueSelector->GetOutput());
+                ostuThr->SetInsideValue(0);
+                ostuThr->SetOutsideValue(1);
+                ostuThr->Update();
+
+                RegionIterator labelIt(ostuThr->GetOutput(),ostuThr->GetOutput()->GetRequestedRegion());
+
+                outIt.GoToBegin();
+                labelIt.GoToBegin();
+                while (!outIt.IsAtEnd()) {
+                    outIt.Set(outIt.Get()+labelIt.Get());
+                    ++outIt;
+                    ++labelIt;
+                }
+            }else{
+                cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<")"<<endl;
+
+                labelMask->SetInput(tissueSelector->GetOutput());
+                labelMask->SetLowerThreshold(tissueThr);
+                labelMask->SetInsideValue(n+1);
+                labelMask->SetOutsideValue(0);
+                labelMask->Update();
+
+                RegionIterator labelIt(labelMask->GetOutput(),labelMask->GetOutput()->GetRequestedRegion());
+
+                outIt.GoToBegin();
+                labelIt.GoToBegin();
+                while (!outIt.IsAtEnd()) {
+                    if (labelIt.Get()!=static_cast<InputPixelType>(0)) {
+                        outIt.Set(outIt.Get()+labelIt.Get());
+                    }
+                    ++outIt;
+                    ++labelIt;
+                }
             }
         }
     }

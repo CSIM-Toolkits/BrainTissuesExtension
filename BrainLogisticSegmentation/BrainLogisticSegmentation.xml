@@ -75,26 +75,6 @@
       </constraints>
     </float>
     <boolean>
-	<name>useManualTolerance</name>
-	<longflag>--useManualTolerance</longflag>
-	<description><![CDATA[Choose if you want to use ...]]></description>
-	<label>Use Manual Tolerance</label>
-	<default>false</default>
-    </boolean>
-    <integer>
-      <name>manualTolerance</name>
-      <longflag>mTolerance</longflag>
-      <flag>t</flag>
-      <label>Manual Tolerance</label>
-      <description><![CDATA[]]></description>
-      <default>1</default>
-      <constraints>
-        <minimum>1</minimum>
-        <maximum>49</maximum>
-        <step>1</step>
-      </constraints>
-    </integer>
-    <boolean>
 	<name>useManualBins</name>
 	<longflag>--useManualBins</longflag>
 	<description><![CDATA[Choose if you want to use ...]]></description>
