@@ -13,17 +13,16 @@ class BrainStructuresSegmenter(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-
+#TODO Verificar toda a documentacao da extensao: wikipage, modules...
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Brain Structures Segmenter" # TODO make this more human readable by adding spaces
+    self.parent.title = "Brain Structures Segmenter"
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = []
     self.parent.contributors = ["Antonio Carlos da S. Senra Filho (University of Sao Paulo), Luiz Otavio Murta Junior (University of Sao Paulo)"] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-    This module aims to segment brain tissues from strucutral MRI images, namely T1, T2 and PD weigethed MRI images. Here, it is applied
-    an image processing pipeline based on voxel intensity segmentation in order to offer a fast tissue segmentation. This module is the main caller from a set
-    of different brain segmentation procedures. More details about this module, see the wikipage: https://www.slicer.org/wiki/Documentation/Nightly/Modules/BrainStructuresSegmenter
+    This module offers a set of algorithms to brain tissue segmentation task in structural MRI images, namely T1, T2 and PD. This module is the main function to several brian segmentation methods, being at moment
+     the K-Means and BLS segmentation methods available. More details are found in the wikipage: https://www.slicer.org/wiki/Documentation/Nightly/Modules/BrainStructuresSegmenter
     """
     self.parent.acknowledgementText = """
     This work was partially funded by CNPq grant 201871/2015-7/SWE and CAPES.
@@ -39,7 +38,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
   """
 
   def setup(self):
-    # ScriptedLoadableModuleWidget.setup(self)
+    ScriptedLoadableModuleWidget.setup(self)
 
     # Instantiate and connect widgets ...
 
@@ -86,7 +85,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setIsBETWidget.setChecked(True)
     self.setIsBETWidget.setToolTip(
       "Is the input data already brain extracted? If not, the ROBEX brain extraction method is used.")
-    parametersIOLayout.addRow("Is brain extracted?", self.setIsBETWidget)
+    parametersIOLayout.addRow("Is Brain Extracted?", self.setIsBETWidget)
 
     #
     # output volume selector
@@ -108,7 +107,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     # Parameters Area
     #
     parametersTissueCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersTissueCollapsibleButton.text = "Tissue Segmentation Parameters"
+    parametersTissueCollapsibleButton.text = "Segmentation Parameters"
     self.layout.addWidget(parametersTissueCollapsibleButton)
 
     # Layout within the dummy collapsible button
@@ -121,7 +120,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setSeparateTissueBooleanWidget.setChecked(False)
     self.setSeparateTissueBooleanWidget.setToolTip(
       "Select one tissue type desired to be passed as the output. If checked, the tissue type in Tissue Type option is used.")
-    parametersTissueLayout.addRow("Separate one tissue?", self.setSeparateTissueBooleanWidget)
+    parametersTissueLayout.addRow("Separate One Tissue?", self.setSeparateTissueBooleanWidget)
 
     #
     # Tissue Type
@@ -134,11 +133,102 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
       "Tissue type that will be resulted from the brain segmentation.")
     parametersTissueLayout.addRow("Tissue Type ", self.setTissueTypeWidget)
 
+
+    #
+    # Apply AAD filtering
+    #
+    self.setApplyAADBooleanWidget = ctk.ctkCheckBox()
+    self.setApplyAADBooleanWidget.setChecked(True)
+    self.setApplyAADBooleanWidget.setToolTip(
+      "Apply the AAD filter on the input data. This is recommended since the image noise level may affect the segmentation performance.")
+    parametersTissueLayout.addRow("Apply AAD filter", self.setApplyAADBooleanWidget)
+
+
+    #
+    # Apply Bias Correction
+    #
+    self.setApplyBiasCorrectionBooleanWidget = ctk.ctkCheckBox()
+    self.setApplyBiasCorrectionBooleanWidget.setChecked(True)
+    self.setApplyBiasCorrectionBooleanWidget.setToolTip(
+      "Apply a bias field correction in the input data. This is recommended since the global signal fluctuation provided by magnetic fiel inhomogeneity may affect the segmentation performance.")
+    parametersTissueLayout.addRow("Apply Bias Field Correction", self.setApplyBiasCorrectionBooleanWidget)
+
+    #
+    # Apply Label Smoothing
+    #
+    self.setApplyLabelSmoothingBooleanWidget = ctk.ctkCheckBox()
+    self.setApplyLabelSmoothingBooleanWidget.setChecked(True)
+    self.setApplyLabelSmoothingBooleanWidget.setToolTip(
+      "Apply a post processing procedure to reduce the label variability. Here the label smoothing method based on morphological convolution is applied.")
+    parametersTissueLayout.addRow("Apply Label Smoothing", self.setApplyLabelSmoothingBooleanWidget)
+
+    #
+    # Parameters Area
+    #
+    parametersSegmentationCollapsibleButton = ctk.ctkCollapsibleButton()
+    parametersSegmentationCollapsibleButton.text = "Expert Segmentation Parameters"
+    parametersSegmentationCollapsibleButton.collapsed = True
+    self.layout.addWidget(parametersSegmentationCollapsibleButton)
+
+    # Layout within the dummy collapsible button
+    parametersSegmentationLayout = qt.QFormLayout(parametersSegmentationCollapsibleButton)
+
+    #
+    # Segmentation modality
+    #
+    self.groupBoxRadioButtons = qt.QGroupBox("Segmentation Method")
+    RadioButtonLayout = qt.QFormLayout()
+    self.groupBoxRadioButtons.setLayout(RadioButtonLayout)
+    self.setRadioKMeans = qt.QRadioButton('K-Means')
+    self.setRadioKMeans.setToolTip("K-Means algorithm used in the Basic Brain Segmentation module.")
+    self.setRadioBLS = qt.QRadioButton('BLS')
+    self.setRadioBLS.setChecked(True)
+    self.setRadioBLS.setToolTip("Brain Logistic Segmentation (BLS) method.")
+    RadioButtonLayout.addRow(self.setRadioKMeans)
+    RadioButtonLayout.addRow(self.setRadioBLS)
+
+    parametersSegmentationLayout.addRow(self.groupBoxRadioButtons)
+
+    # #
+    # # Tissue Threshold
+    # #
+    self.setTissueThresholdWidget = ctk.ctkSliderWidget()
+    self.setTissueThresholdWidget.singleStep = 0.01
+    self.setTissueThresholdWidget.minimum = 0.01
+    self.setTissueThresholdWidget.maximum = 0.99
+    self.setTissueThresholdWidget.value = 0.50
+    self.setTissueThresholdWidget.setToolTip(
+      "Regulates the local logistic classification to each brian tissue. The ideal value is 0.50 which does not offer label overlay, however, if you need a rough estimate of partial tissue volume (PTV), one can set it to other threshold (t<0.5 offer a numbered label estimate to PTV and t>0.5 offer a zero mask to PTV). This parameter is only used when BLS segmentation method is called."
+      " Example: t=0.50 means that ...")
+    parametersSegmentationLayout.addRow("Tissue Threshold", self.setTissueThresholdWidget)
+
+    #
+    # Use manual number of bins?
+    #
+    self.setManualBinsBooleanWidget = ctk.ctkCheckBox()
+    self.setManualBinsBooleanWidget.setChecked(False)
+    self.setManualBinsBooleanWidget.setToolTip(
+      "Set this if you want to regulate the number of bins manually. This parameter is only used when BLS segmentation method is called.")
+    parametersSegmentationLayout.addRow("Use Manual Bins", self.setManualBinsBooleanWidget)
+
+    #
+    # Number of Bins: manual setting
+    #
+    self.setNumberOfBinsWidget = ctk.ctkSliderWidget()
+    self.setNumberOfBinsWidget.maximum = 255
+    self.setNumberOfBinsWidget.minimum = 12
+    self.setNumberOfBinsWidget.value = 32
+    self.setNumberOfBinsWidget.singleStep = 1
+    self.setNumberOfBinsWidget.setToolTip("Select the number of bins that should be used for the image histogram analysis. This parameter is only used when BLS segmentation method is called")
+    parametersSegmentationLayout.addRow("Number Of Bins ", self.setNumberOfBinsWidget)
+
+
     #
     # Noise Attenuation Parameters Area
     #
     parametersNoiseAttenuationCollapsibleButton = ctk.ctkCollapsibleButton()
     parametersNoiseAttenuationCollapsibleButton.text = "Noise Attenuation Parameters"
+    parametersNoiseAttenuationCollapsibleButton.collapsed = True
     self.layout.addWidget(parametersNoiseAttenuationCollapsibleButton)
 
     # Layout within the dummy collapsible button
@@ -148,7 +238,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     # Filtering Parameters: Condutance
     #
     self.setFilteringCondutanceWidget = ctk.ctkSliderWidget()
-    self.setFilteringCondutanceWidget.maximum = 30
+    self.setFilteringCondutanceWidget.maximum = 50
     self.setFilteringCondutanceWidget.minimum = 0
     self.setFilteringCondutanceWidget.value = 10
     self.setFilteringCondutanceWidget.singleStep = 1
@@ -182,6 +272,7 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     #
     parametersLabelRefinementCollapsibleButton = ctk.ctkCollapsibleButton()
     parametersLabelRefinementCollapsibleButton.text = "Label Refinement Parameters"
+    parametersLabelRefinementCollapsibleButton.collapsed = True
     self.layout.addWidget(parametersLabelRefinementCollapsibleButton)
 
     # Layout within the dummy collapsible button
@@ -231,7 +322,15 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
               , self.setImageModalityBooleanWidget.currentText
               , self.setSeparateTissueBooleanWidget.isChecked()
               , self.setIsBETWidget.isChecked()
+              , self.setRadioKMeans.isChecked()
+              , self.setRadioBLS.isChecked()
               , self.setTissueTypeWidget.currentText
+              , self.setApplyAADBooleanWidget.isChecked()
+              , self.setApplyBiasCorrectionBooleanWidget.isChecked()
+              , self.setApplyLabelSmoothingBooleanWidget.isChecked()
+              , self.setTissueThresholdWidget.value
+              , self.setManualBinsBooleanWidget.isChecked()
+              , self.setNumberOfBinsWidget.value
               , self.setFilteringCondutanceWidget.value
               , self.setFilteringNumberOfIterationWidget.value
               , self.setFilteringQWidget.value
@@ -278,7 +377,7 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def run(self, inputVolume, outputVolume, imageModality, isSeparateTissue, applyBET, tissueType, condutance, numIter, qValue, sigma):
+  def run(self, inputVolume, outputVolume, imageModality, isSeparateTissue, applyBET, kMeansSegType, BLSSegType, tissueType, applyAAD, applyBiasCorrection, applyLabelSmoothing, tissueThr, useManualBins, numberOfBins, condutance, numIter, qValue, sigma):
     """
     Run the actual algorithm
     """
@@ -287,105 +386,155 @@ class BrainStructuresSegmenterLogic(ScriptedLoadableModuleLogic):
       slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
       return False
 
+
     logging.info('Processing started')
+
+    volumesLogic = slicer.modules.volumes.logic()
+    tmpVolume = volumesLogic.CloneVolume(slicer.mrmlScene, inputVolume, "tmp-image")
 
     if not applyBET:
       slicer.util.showStatusMessage("Pre-processing: Brain extraction...")
 
       betParams = {}
-      betParams["inputVolume"] = inputVolume.GetID()
-      betParams["outputVolume"] = inputVolume.GetID()
+      betParams["inputVolume"] = tmpVolume.GetID()
+      betParams["outputVolume"] = tmpVolume.GetID()
 
       slicer.cli.run(slicer.modules.robexbrainextraction, None, betParams, wait_for_completion=True)
 
 
-    #################################################################################################################
-    #                                              Noise Attenuation                                                #
-    #################################################################################################################
-    if isSeparateTissue:
-      slicer.util.showStatusMessage("Step 1/4: Decreasing image noise level...")
-    else:
-      slicer.util.showStatusMessage("Step 1/3: Decreasing image noise level...")
+    if applyAAD:
+      #################################################################################################################
+      #                                              Noise Attenuation                                                #
+      #################################################################################################################
+      if isSeparateTissue:
+        slicer.util.showStatusMessage("Step 1/4: Decreasing image noise level...")
+      else:
+        slicer.util.showStatusMessage("Step 1/3: Decreasing image noise level...")
 
-    inputSmoothVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputSmoothVolume)
-    regParams = {}
-    regParams["inputVolume"] = inputVolume.GetID()
-    regParams["outputVolume"] = inputSmoothVolume.GetID()
-    regParams["condutance"] = condutance
-    regParams["iterations"] = numIter
-    regParams["q"] = qValue
-
-    slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
-
-
-    #################################################################################################################
-    #                                             Bias Field Correction                                             #
-    #################################################################################################################
-    if isSeparateTissue:
-      slicer.util.showStatusMessage("Step 2/4: Bias field correction...")
-    else:
-      slicer.util.showStatusMessage("Step 2/3: Bias field correction...")
-
-    inputSmoothBiasVolume = slicer.vtkMRMLScalarVolumeNode()
-    slicer.mrmlScene.AddNode(inputSmoothBiasVolume)
-    regParams = {}
-    regParams["inputImageName"] = inputSmoothVolume.GetID()
-    regParams["outputImageName"] = inputSmoothBiasVolume.GetID()
-
-    slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
-
-    #################################################################################################################
-    #                                             Brain Tissue Segmentation                                         #
-    #################################################################################################################
-    if isSeparateTissue:
-      slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
-    else:
-      slicer.util.showStatusMessage("Step 3/3: Brain tissue segmentation...")
-
-
-    regParams = {}
-    regParams["inputVolume"] = inputSmoothBiasVolume.GetID()
-    regParams["outputLabel"] = outputVolume.GetID()
-    regParams["imageModality"] = imageModality
-    regParams["oneTissue"] = isSeparateTissue
-    regParams["typeTissue"] = tissueType
-
-    slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
-
-    #################################################################################################################
-    #                                                 Label Smoothing                                               #
-    #################################################################################################################
-    if isSeparateTissue:
-      slicer.util.showStatusMessage("Step 4/4: Tissue mask refinement...")
       regParams = {}
+      regParams["inputVolume"] = tmpVolume.GetID()
+      regParams["outputVolume"] = tmpVolume.GetID()
+      regParams["condutance"] = condutance
+      regParams["iterations"] = numIter
+      regParams["q"] = qValue
+
+      slicer.cli.run(slicer.modules.aadimagefilter, None, regParams, wait_for_completion=True)
+
+
+    if applyBiasCorrection:
+      #################################################################################################################
+      #                                             Bias Field Correction                                             #
+      #################################################################################################################
+      if isSeparateTissue:
+        slicer.util.showStatusMessage("Step 2/4: Bias field correction...")
+      else:
+        slicer.util.showStatusMessage("Step 2/3: Bias field correction...")
+
+      regParams = {}
+      regParams["inputImageName"] = tmpVolume.GetID()
+      regParams["outputImageName"] = tmpVolume.GetID()
+
+      slicer.cli.run(slicer.modules.n4itkbiasfieldcorrection, None, regParams, wait_for_completion=True)
+
+      #################################################################################################################
+      #                                             Brain Tissue Segmentation                                         #
+      #################################################################################################################
+    if kMeansSegType:
+      if isSeparateTissue:
+        slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
+      else:
+        slicer.util.showStatusMessage("Step 3/3: Brain tissue segmentation...")
+
+
+      regParams = {}
+      regParams["inputVolume"] = tmpVolume.GetID()
+      regParams["outputLabel"] = outputVolume.GetID()
+      regParams["imageModality"] = imageModality
+      regParams["oneTissue"] = isSeparateTissue
+      regParams["typeTissue"] = tissueType
+
+      slicer.cli.run(slicer.modules.basicbraintissues, None, regParams, wait_for_completion=True)
+    elif BLSSegType:
+      if isSeparateTissue:
+        slicer.util.showStatusMessage("Step 3/4: Brain tissue segmentation...")
+      else:
+        slicer.util.showStatusMessage("Step 3/3: Brain tissue segmentation...")
+
+      regParams = {}
+      regParams["inputVolume"] = tmpVolume.GetID()
+      regParams["outputTissue"] = outputVolume.GetID()
+      regParams["nTissues"] = 3  # Always 3 tissues...further improvements will be added
+      regParams["doOneTissue"] = isSeparateTissue
       if imageModality == "T1":
         if tissueType == "White Matter":
-          regParams["labelToSmooth"] = 3
+          regParams["selectedTissueMask"] = 1
         elif tissueType == "Gray Matter":
-          regParams["labelToSmooth"] = 2
+          regParams["selectedTissueMask"] = 2
         elif tissueType == "CSF":
-          regParams["labelToSmooth"] = 1
+          regParams["selectedTissueMask"] = 3
       else:
         if tissueType == "White Matter":
-          regParams["labelToSmooth"] = 1
+          regParams["selectedTissueMask"] = 3
         elif tissueType == "Gray Matter":
-          regParams["labelToSmooth"] = 2
+          regParams["selectedTissueMask"] = 2
         elif tissueType == "CSF":
-          regParams["labelToSmooth"] = 3
+          regParams["selectedTissueMask"] = 1
 
-      regParams["gaussianSigma"] = sigma
-      regParams["inputVolume"] = outputVolume.GetID()
-      regParams["outputVolume"] = outputVolume.GetID()
+      regParams["tissueThr"] = tissueThr
+      regParams["useManualBins"] = useManualBins
+      regParams["manualNumberOfBins"] = numberOfBins
 
-      slicer.cli.run(slicer.modules.labelmapsmoothing, None, regParams, wait_for_completion=True)
+      slicer.cli.run(slicer.modules.brainlogisticsegmentation, None, regParams, wait_for_completion=True)
+
+    if applyLabelSmoothing:
+      #################################################################################################################
+      #                                                 Label Smoothing                                               #
+      #################################################################################################################
+      if isSeparateTissue:
+        slicer.util.showStatusMessage("Step 4/4: Tissue mask refinement...")
+        regParams = {}
+        if kMeansSegType:
+          if imageModality == "T1":
+            if tissueType == "White Matter":
+              regParams["labelToSmooth"] = 3
+            elif tissueType == "Gray Matter":
+              regParams["labelToSmooth"] = 2
+            elif tissueType == "CSF":
+              regParams["labelToSmooth"] = 1
+          else:
+            if tissueType == "White Matter":
+              regParams["labelToSmooth"] = 1
+            elif tissueType == "Gray Matter":
+              regParams["labelToSmooth"] = 2
+            elif tissueType == "CSF":
+              regParams["labelToSmooth"] = 3
+        elif BLSSegType:
+          if imageModality == "T1":
+            if tissueType == "White Matter":
+              regParams["labelToSmooth"] = 1
+            elif tissueType == "Gray Matter":
+              regParams["labelToSmooth"] = 2
+            elif tissueType == "CSF":
+              regParams["labelToSmooth"] = 3
+          else:
+            if tissueType == "White Matter":
+              regParams["labelToSmooth"] = 3
+            elif tissueType == "Gray Matter":
+              regParams["labelToSmooth"] = 2
+            elif tissueType == "CSF":
+              regParams["labelToSmooth"] = 1
+
+        regParams["gaussianSigma"] = sigma
+        regParams["inputVolume"] = outputVolume.GetID()
+        regParams["outputVolume"] = outputVolume.GetID()
+
+        slicer.cli.run(slicer.modules.labelmapsmoothing, None, regParams, wait_for_completion=True)
 
 
     #
     # Removing unnecessary nodes
     #
-    slicer.mrmlScene.RemoveNode(inputSmoothVolume)
-    slicer.mrmlScene.RemoveNode(inputSmoothBiasVolume)
+    slicer.mrmlScene.RemoveNode(tmpVolume)
 
     slicer.util.showStatusMessage("Processing completed")
     logging.info('Processing completed')
