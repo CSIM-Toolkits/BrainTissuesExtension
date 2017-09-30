@@ -13,7 +13,7 @@ class BrainStructuresSegmenter(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
-#TODO Verificar toda a documentacao da extensao: wikipage, modules...
+
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "Brain Structures Segmenter"

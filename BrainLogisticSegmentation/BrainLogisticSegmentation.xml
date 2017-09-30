@@ -2,7 +2,7 @@
 <executable>
   <category>Examples</category>
   <title>Brain Logistic Segmentation</title>
-  <description><![CDATA[This is a CLI module ...]]></description>
+  <description><![CDATA[This is a CLI module that provides the Brain Logistic Segmentation (BLS) algorithm, which offer a simple and fast alternative to CSF, gray and white matter tissues segmentation. The entire module are optmized to strucutral MRI brain images, such as T1, T2 and PD weighted images. Although BLS algorithm was intensivelly studied on T1 images, the further application on other imaging modalitites are expected to behave in a similar robustness (if those images maintain the basic features needed). The full algorithm explanation and benchmark are explained in details at: DOI]]></description>
   <version>0.0.1</version>
   <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/BrainLogisticSegmentation</documentation-url>
   <license>Slicer</license>
@@ -16,21 +16,21 @@
       <label>Input Volume</label>
       <channel>input</channel>
       <index>0</index>
-      <description><![CDATA[Input volume]]></description>
+      <description><![CDATA[Input volume (T1, T2 or PD MRI images)]]></description>
     </image>
     <image type="label">
       <name>outputTissue</name>
       <label>Output Tissue</label>
       <channel>output</channel>
       <index>1</index>
-      <description><![CDATA[Output Tissues]]></description>
+      <description><![CDATA[Output Tissues. A binary mask with all the tissues being represented]]></description>
     </image>
 <integer>
       <name>nTissues</name>
       <longflag>nTissues</longflag>
       <flag>n</flag>
       <label>Number Of Tissues</label>
-      <description><![CDATA[]]></description>
+      <description><![CDATA[The number of tissues presented in the input image. This should be driven by the image histogram peaks.]]></description>
       <default>3</default>
       <constraints>
         <minimum>1</minimum>
@@ -41,7 +41,7 @@
     <boolean>
 	<name>doOneTissue</name>
 	<longflag>--doOneTissue</longflag>
-	<description><![CDATA[Choose if you want to use ...]]></description>
+	<description><![CDATA[Choose this if you want a single tissue as the output mask.]]></description>
 	<label>Extract one single tissue</label>
 	<default>false</default>
     </boolean>
@@ -50,7 +50,7 @@
       <longflag>selectedTissueMask</longflag>
       <flag>s</flag>
       <label>Selected Tissue Mask</label>
-      <description><![CDATA[]]></description>
+      <description><![CDATA[Select what tissue that should be exported. Here the order is always given from the brightest to darkest tissue. For instance, for T1 images, the white matter is 1, gray matter is 2 and CSF is 3.]]></description>
       <default>1</default>
       <constraints>
         <minimum>1</minimum>
@@ -66,7 +66,7 @@
       <name>tissueThr</name>
       <longflag>thr</longflag>
       <label>Tissue Refinement Threshold</label>
-      <description><![CDATA[]]></description>
+      <description><![CDATA[Defines the logistic classification threshold that should be adopted in order to define the binary mask. If thr=0.5, all the tissues are precisely added without any ovarlay. If thr<0.5, there is a tissue mask overlay representing the parcial volume (PV) among tissues, which is placed in an additional tissue mask (PV masking). If thr>0.5, the overlay is also presented regarind PV, however the output is changed to zero, i.e. the overlay tissue is not represented as an additional mask.]]></description>
       <default>0.5</default>
       <constraints>
         <minimum>0.01</minimum>
@@ -77,7 +77,7 @@
     <boolean>
 	<name>useManualBins</name>
 	<longflag>--useManualBins</longflag>
-	<description><![CDATA[Choose if you want to use ...]]></description>
+	<description><![CDATA[Choose if you want to set the number of bins manually.]]></description>
 	<label>Use Manual Number Of Bins</label>
 	<default>false</default>
     </boolean>
@@ -86,7 +86,7 @@
       <longflag>mBins</longflag>
       <flag>b</flag>
       <label>Manual Number Of Bins</label>
-      <description><![CDATA[]]></description>
+      <description><![CDATA[Define the number of bins.]]></description>
       <default>32</default>
       <constraints>
         <minimum>30</minimum>
