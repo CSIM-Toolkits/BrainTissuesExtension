@@ -91,7 +91,7 @@ int DoIt( int argc, char * argv[], TPixel )
         stat->SetInput(tissueSelector->GetOutput());
         stat->Update();
 
-        if (stat->GetMaximum()<0.98) {
+        if (stat->GetMaximum()<0.95) {
             cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<") - Ostu thresholding is being applied."<<endl; //TODO Problema com o valor adotado...tem que tirar outliers para calcular a media...
 
             ostuThr->SetInput(tissueSelector->GetOutput());
@@ -136,7 +136,7 @@ int DoIt( int argc, char * argv[], TPixel )
             stat->SetInput(tissueSelector->GetOutput());
             stat->Update();
 
-            if (stat->GetMaximum()<0.98) {
+            if (stat->GetMaximum()<0.95) {
                 cout<<"Weighted tissue map (Max: "<<stat->GetMaximum()<<" - Min: "<<stat->GetMinimum()<<") - Ostu thresholding is being applied."<<endl;
 
                 ostuThr->SetInput(tissueSelector->GetOutput());

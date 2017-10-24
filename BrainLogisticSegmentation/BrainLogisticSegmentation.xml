@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <executable>
-  <category>Examples</category>
+  <category>Utilities.CSIM Supporting Modules.Brain Tissues</category>
   <title>Brain Logistic Segmentation</title>
-  <description><![CDATA[This is a CLI module that provides the Brain Logistic Segmentation (BLS) algorithm, which offer a simple and fast alternative to CSF, gray and white matter tissues segmentation. The entire module are optmized to strucutral MRI brain images, such as T1, T2 and PD weighted images. Although BLS algorithm was intensivelly studied on T1 images, the further application on other imaging modalitites are expected to behave in a similar robustness (if those images maintain the basic features needed). The full algorithm explanation and benchmark are explained in details at: DOI]]></description>
+  <description><![CDATA[This is a CLI module that provides the Brain Logistic Segmentation (BLS) algorithm, which offer a simple and fast alternative to CSF, gray and white matter tissues segmentation. The entire module are optmized to strucutral MRI brain images, such as T1, T2 and PD weighted images. In fact, this module only do the tissue segmentation process, which may offer a suboptimal response. It is suggest the use of the Brain Structures Segmenter module instead. Although BLS algorithm was intensivelly studied on T1 images, the further application on other imaging modalitites are expected to behave in a similar robustness (if those images maintain the basic features needed). The full algorithm explanation and benchmark are explained in details at: DOI]]></description>
   <version>0.0.1</version>
   <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/BrainLogisticSegmentation</documentation-url>
   <license>Slicer</license>
@@ -66,7 +66,7 @@
       <name>tissueThr</name>
       <longflag>thr</longflag>
       <label>Tissue Refinement Threshold</label>
-      <description><![CDATA[Defines the logistic classification threshold that should be adopted in order to define the binary mask. If thr=0.5, all the tissues are precisely added without any ovarlay. If thr<0.5, there is a tissue mask overlay representing the parcial volume (PV) among tissues, which is placed in an additional tissue mask (PV masking). If thr>0.5, the overlay is also presented regarind PV, however the output is changed to zero, i.e. the overlay tissue is not represented as an additional mask.]]></description>
+      <description><![CDATA[Defines the logistic classification threshold that should be adopted in order to define the binary mask. If thr=0.5, all the tissues are precisely added without any overlay. If thr<0.5, there is a tissue mask overlay representing the partial volume (PV) among tissues, which is placed in an additional tissue mask (PV masking). If thr>0.5, the overlay is also presented regarding PV, however, the output is changed to zero, i.e. the overlying tissue is not represented as an additional mask.]]></description>
       <default>0.5</default>
       <constraints>
         <minimum>0.01</minimum>

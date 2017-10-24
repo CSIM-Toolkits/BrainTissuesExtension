@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <executable>
-  <category>Segmentation</category>
+  <category>Utilities.CSIM Supporting Modules.Brain Tissues</category>
   <title>Basic Brain Tissues</title>
-  <description><![CDATA[This module aims to extract brain tissues mask. This tool was intensively tested with T1 MRI images, but the pipeline could be applied to any other structural MRI image. Here, it is applied a simple image processing pipeline based on voxel intensity segmentation in order to offer a fast tissue segmentation. In fact, this module alone only do the tissue segmentation process, which may offer a suboptimal response. It is suggest the use of the BrainStructuresSegmenter module instead.]]></description>
+  <description><![CDATA[This module aims to extract the major brain tissues mask. This tool was intensively tested with T1 MRI images, but the pipeline could be applied to any other structural MRI image. Here, it is applied a simple image processing pipeline based on voxel intensity segmentation in order to offer a simple brain tissue segmentation. In fact, this module only do the tissue segmentation process, which may offer a suboptimal response. It is suggest the use of the Brain Structures Segmenter module instead.]]></description>
   <version>0.0.1</version>
   <documentation-url>https://www.slicer.org/slicerWiki/index.php/Documentation/Nightly/Modules/BasicBrainTissues</documentation-url>
   <license>Slicer</license>
