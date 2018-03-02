@@ -242,8 +242,8 @@ class BrainStructuresSegmenterWidget(ScriptedLoadableModuleWidget):
     self.setFilteringCondutanceWidget.minimum = 0
     self.setFilteringCondutanceWidget.value = 10
     self.setFilteringCondutanceWidget.singleStep = 1
-    self.setFilteringCondutanceWidget.setToolTip("Condutance parameter.")
-    parametersNoiseAttenuationFormLayout.addRow("Condutance ", self.setFilteringCondutanceWidget)
+    self.setFilteringCondutanceWidget.setToolTip("Conductance parameter.")
+    parametersNoiseAttenuationFormLayout.addRow("Conductance ", self.setFilteringCondutanceWidget)
 
     #
     # Filtering Parameters: Number of iterations
