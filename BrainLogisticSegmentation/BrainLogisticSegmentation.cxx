@@ -6,7 +6,7 @@
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkCastImageFilter.h"
 #include "itkImageRegionIterator.h"
-#include "itkBrainLogisticSegmentationImageFilter.h"
+#include "itkMultipleLogisticClassificationImageFilter.h"
 
 #include "itkPluginUtilities.h"
 
@@ -46,7 +46,7 @@ int DoIt( int argc, char * argv[], TPixel )
     reader->SetFileName( inputVolume.c_str() );
     reader->Update();
 
-    typedef itk::BrainLogisticSegmentationImageFilter<InputImageType>     BrainSegmentationType;
+    typedef itk::MultipleLogisticClassificationImageFilter<InputImageType>     BrainSegmentationType;
     typename BrainSegmentationType::Pointer brainSeg = BrainSegmentationType::New();
     brainSeg->SetInput(reader->GetOutput());
     brainSeg->DebugModeOn();

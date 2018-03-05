@@ -13,8 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-#ifndef __itkBrainLogisticSegmentationImageFilter_h
-#define __itkBrainLogisticSegmentationImageFilter_h
+#ifndef __itkMultipleLogisticClassificationImageFilter_h
+#define __itkMultipleLogisticClassificationImageFilter_h
 #include "itkImageToImageFilter.h"
 #include "itkImage.h"
 #include "itkNumericTraits.h"
@@ -33,7 +33,7 @@ namespace itk
 {
 
 template< typename TInputImage , typename TOutputImage=VectorImage<typename NumericTraits<typename TInputImage::ValueType>::ValueType, TInputImage::ImageDimension> >
-class ITK_EXPORT BrainLogisticSegmentationImageFilter:
+class ITK_EXPORT MultipleLogisticClassificationImageFilter:
         public ImageToImageFilter< TInputImage, TOutputImage >
 {
 public:
@@ -49,7 +49,7 @@ public:
 
 
     /** Standard class typedefs. */
-    typedef BrainLogisticSegmentationImageFilter          Self;
+    typedef MultipleLogisticClassificationImageFilter          Self;
     typedef ImageToImageFilter< TInputImage, TOutputImage >       Superclass;
     typedef SmartPointer< Self >                                  Pointer;
     typedef SmartPointer< const Self >                            ConstPointer;
@@ -58,7 +58,7 @@ public:
     itkNewMacro(Self)
 
     /** Run-time type information (and related methods). */
-    itkTypeMacro(BrainLogisticSegmentationImageFilter, ImageToImageFilter)
+    itkTypeMacro(MultipleLogisticClassificationImageFilter, ImageToImageFilter)
 
     typedef typename InputImageType::PixelType                 InputPixelType;
     typedef typename OutputImageType::PixelType                OutputPixelType;
@@ -84,6 +84,7 @@ public:
     itkSetMacro(DebugMode, bool)
     itkBooleanMacro(DebugMode)
 
+
     /** Get if use manual tolerance. */
     itkGetMacro(ManualTolerance, bool)
 
@@ -102,6 +103,22 @@ public:
     /** Get the Tolerance. */
     itkGetMacro(Tolerance, char)
 
+    /** Get the vector of peaks found in the histogram analysis. */
+    itkGetMacro(HistogramPeaks, std::vector<double>)
+
+    /** Get the vector of valleys found in the histogram analysis. */
+    itkGetMacro(HistogramValleys, std::vector<double>)
+
+    /** Get the vector of alpha values estimated in each part of the histogram.
+    The counter follows the same orientation that is given in the HistogramPeaks and HistogramValleys,
+    i.e. from the higher to the lower values of the histogram.*/
+    itkGetMacro(Alphas, std::vector<double>)
+
+    /** Get the vector of beta values estimated in each part of the histogram.
+    The counter follows the same orientation that is given in the HistogramPeaks and HistogramValleys,
+    i.e. from the higher to the lower values of the histogram.*/
+    itkGetMacro(Betas, std::vector<double>)
+
 #ifdef ITK_USE_CONCEPT_CHECKING
     // Begin concept checking
     itkConceptMacro( InputHasNumericTraitsCheck,
@@ -113,16 +130,17 @@ public:
 #endif
 
 protected:
-    BrainLogisticSegmentationImageFilter();
-    virtual ~BrainLogisticSegmentationImageFilter() {}
+    MultipleLogisticClassificationImageFilter();
+    virtual ~MultipleLogisticClassificationImageFilter() {}
     bool m_ManualTolerance, m_DebugMode, m_UseManualNumberOfBins;
     char m_Tolerance;
+    std::vector<double> m_HistogramPeaks, m_HistogramValleys, m_Alphas, m_Betas;
     unsigned int m_NumberOfBins, m_NumberOfTissues; //TODO Fazer o GetSet do m_NumberOfTissues
 
     virtual void GenerateOutputInformation(void) ITK_OVERRIDE;
     void GenerateData();
 private:
-    BrainLogisticSegmentationImageFilter(const Self &); //purposely not implemented
+    MultipleLogisticClassificationImageFilter(const Self &); //purposely not implemented
     void operator=(const Self &);  //purposely not implemented
     void checkTolerance(char tolerance);
 };
@@ -130,7 +148,7 @@ private:
 } // end namespace itk
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "itkBrainLogisticSegmentationImageFilter.hxx"
+#include "itkMultipleLogisticClassificationImageFilter.hxx"
 #endif
 
 #endif
